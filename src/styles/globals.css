@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/* ─── Spooky Design Tokens ─────────────────────────────────────────── */
+:root {
+  --color-bg:      #0d0d0d;
+  --color-surface: #1a1a2e;
+  --color-accent:  #ff6a00;
+  --color-accent2: #c0392b;
+  --color-text:    #f0e6d3;
+  --color-muted:   #8a8a9a;
+  --color-border:  #2a1a0e;
+}
+
+/* ─── Base ──────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  min-height: 100vh;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-accent); border-radius: 3px; }
+
+/* ─── Typography ─────────────────────────────────────────────────────── */
+h1, h2, h3 {
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────── */
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.85; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
+@keyframes pulse-orange {
+  0%, 100% { box-shadow: 0 0 8px var(--color-accent); }
+  50%       { box-shadow: 0 0 20px var(--color-accent), 0 0 40px var(--color-accent2); }
+}
+
+.animate-flicker  { animation: flicker 2s ease-in-out infinite; }
+.animate-float    { animation: float 3s ease-in-out infinite; }
+.animate-glow     { animation: pulse-orange 2s ease-in-out infinite; }
+
+/* ─── Utility classes ────────────────────────────────────────────────── */
+.btn-primary {
+  background-color: var(--color-accent);
+  color: #0d0d0d;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+.btn-primary:hover {
+  background-color: var(--color-accent2);
+  color: var(--color-text);
+  transform: scale(1.02);
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.card-spooky {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.card-spooky:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 16px rgba(255, 106, 0, 0.2);
+}

@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Build on TypeScript file save",
+      "trigger": "PostFileSave",
+      "description": "Run npm run build after any .ts/.tsx file is saved to catch TypeScript errors early",
+      "matcher": "\\.(ts|tsx)$",
+      "action": {
+        "type": "command",
+        "command": "cd /home/khanhnv/Projects/HauntedCustumeShop && npm run build 2>&1 | tail -20",
+        "timeout": 120
+      }
+    }
+  ]
+}

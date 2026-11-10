@@ -1,0 +1,35 @@
+{
+  "name": "haunted-costume-shop",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@solana/pay": "^0.2.5",
+    "@solana/web3.js": "^1.98.0",
+    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/wallet-adapter-react": "^0.15.35",
+    "@solana/wallet-adapter-react-ui": "^0.9.35",
+    "@solana/wallet-adapter-wallets": "^0.19.32",
+    "qrcode": "^1.5.4",
+    "bignumber.js": "^9.1.2"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/qrcode": "^1.5.5",
+    "tailwindcss": "^4",
+    "@tailwindcss/postcss": "^4",
+    "eslint": "^8",
+    "eslint-config-next": "15.0.0"
+  }
+}
