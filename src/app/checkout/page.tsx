@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -18,7 +18,31 @@ import {
 } from "@/lib/solanaPay";
 import QRCode from "@/components/QRCode";
 import PaymentStatus from "@/components/PaymentStatus";
-import type { PaymentState, ReceiptLine } from "@/types";
+import type { CartItem, PaymentState, ReceiptLine } from "@/types";
+
+/** Everything fixed for one checkout attempt: reference + amount + line items. */
+interface Attempt {
+  id: number;
+  reference: PublicKey;
+  amountSol: number;
+  lines: ReceiptLine[];
+}
+
+function toLines(items: CartItem[]): ReceiptLine[] {
+  return items.flatMap((i) => {
+    const c = getCostumeById(i.costumeId);
+    if (!c) return [];
+    return [
+      {
+        name: c.name,
+        emoji: c.emoji,
+        mode: i.mode,
+        quantity: i.quantity,
+        unitPrice: i.mode === "buy" ? c.buyPrice : c.rentPrice,
+      },
+    ];
+  });
+}
 
 export default function CheckoutPage() {
   const { items, totalSOL, clearCart } = useCart();
@@ -27,105 +51,140 @@ export default function CheckoutPage() {
 
   const [state, setState] = useState<PaymentState>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [reference, setReference] = useState<PublicKey | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  const [paying, setPaying] = useState(false);
+  const [attemptId, setAttemptId] = useState(0);
+  const [current, setCurrent] = useState<Attempt | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
+  // Synchronous guard: blocks a second click before React re-renders.
+  const isSubmittingRef = useRef(false);
+  const attemptRef = useRef<Attempt | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const completed = useRef(false);
+  const completedRef = useRef(false);
 
-  // One attempt = one fresh reference + one polling loop.
+  // Latest cart values, read only when a new attempt starts.
+  const itemsRef = useRef(items);
+  const totalRef = useRef(totalSOL);
+  itemsRef.current = items;
+  totalRef.current = totalSOL;
+
+  const endProcessing = useCallback(() => {
+    isSubmittingRef.current = false;
+    setIsProcessing(false);
+  }, []);
+
+  /** (Re)starts on-chain polling for an attempt, with a full timeout window. */
+  const startPolling = useCallback(
+    (attempt: Attempt) => {
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      setState("waiting");
+
+      waitForPayment(attempt.reference, attempt.amountSol, ctrl.signal).then(
+        (outcome) => {
+          if (ctrl.signal.aborted || attemptRef.current?.id !== attempt.id) return;
+          switch (outcome.status) {
+            case "confirmed":
+              completedRef.current = true;
+              saveReceipt({
+                signature: outcome.signature,
+                amountSol: attempt.amountSol,
+                lines: attempt.lines,
+                paidAt: Date.now(),
+              });
+              setState("confirmed");
+              router.push("/receipt");
+              clearCart();
+              break; // button stays disabled while navigating
+            case "timeout":
+              setState("timeout");
+              setError("No payment detected within 60 seconds.");
+              endProcessing();
+              break;
+            case "failed":
+              setState("failed");
+              setError(outcome.message);
+              endProcessing();
+              break;
+            case "cancelled":
+              break;
+          }
+        }
+      );
+    },
+    [router, clearCart, endProcessing]
+  );
+
+  // Exactly one reference per attempt. Re-renders (and StrictMode's double
+  // effect run) reuse the stored attempt instead of generating a new key.
   useEffect(() => {
-    if (completed.current) return;
-    if (items.length === 0) {
+    if (completedRef.current) return;
+    if (itemsRef.current.length === 0) {
       router.replace("/cart");
       return;
     }
 
-    const ref = newReference();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-    setReference(ref);
-    setError(null);
-    setState("ready");
+    let attempt = attemptRef.current;
+    if (!attempt || attempt.id !== attemptId) {
+      attempt = {
+        id: attemptId,
+        reference: newReference(),
+        amountSol: totalRef.current,
+        lines: toLines(itemsRef.current),
+      };
+      attemptRef.current = attempt;
+      setCurrent(attempt);
+      setError(null);
+      endProcessing();
+    }
 
-    const amount = totalSOL;
-    const lines: ReceiptLine[] = items.flatMap((i) => {
-      const c = getCostumeById(i.costumeId);
-      if (!c) return [];
-      return [
-        {
-          name: c.name,
-          emoji: c.emoji,
-          mode: i.mode,
-          quantity: i.quantity,
-          unitPrice: i.mode === "buy" ? c.buyPrice : c.rentPrice,
-        },
-      ];
-    });
-
-    setState("waiting");
-    waitForPayment(ref, amount, ctrl.signal).then((outcome) => {
-      switch (outcome.status) {
-        case "confirmed":
-          completed.current = true;
-          saveReceipt({
-            signature: outcome.signature,
-            amountSol: amount,
-            lines,
-            paidAt: Date.now(),
-          });
-          setState("confirmed");
-          router.push("/receipt");
-          clearCart();
-          break;
-        case "timeout":
-          setState("timeout");
-          setError("No payment detected within 60 seconds.");
-          break;
-        case "failed":
-          setState("failed");
-          setError(outcome.message);
-          break;
-        case "cancelled":
-          break;
-      }
-    });
-
-    return () => ctrl.abort();
-  }, [attempt, items, totalSOL, router, clearCart]);
+    startPolling(attempt);
+    return () => abortRef.current?.abort();
+  }, [attemptId, router, startPolling, endProcessing]);
 
   const payUrl = useMemo(
-    () => (reference ? buildPayUrl(totalSOL, reference) : null),
-    [reference, totalSOL]
+    () => (current ? buildPayUrl(current.amountSol, current.reference) : null),
+    [current]
   );
 
   async function handlePayWithWallet() {
-    if (!publicKey || !reference) return;
+    const attempt = attemptRef.current;
+    if (isSubmittingRef.current || !publicKey || !attempt) return;
     if (publicKey.equals(MERCHANT_WALLET)) {
       // Paying yourself nets zero balance change, so validateTransfer would fail.
       setError("This wallet is the shop's merchant wallet. Switch to a different wallet to pay.");
       return;
     }
-    setPaying(true);
+
+    isSubmittingRef.current = true;
+    setIsProcessing(true);
+    setError(null);
+
     try {
-      await sendWalletPayment(publicKey, reference, totalSOL, sendTransaction);
-      // Confirmation comes from the on-chain polling loop, not from this call.
+      await sendWalletPayment(
+        publicKey,
+        attempt.reference,
+        attempt.amountSol,
+        sendTransaction
+      );
+      // Wallet confirmed and the tx is sent. Stay in "Processing…" and restart
+      // polling with the SAME reference so verification gets a full 60 s window.
+      startPolling(attempt);
     } catch (e) {
-      const c = classifyPaymentError(e);
       abortRef.current?.abort();
       setState("failed");
-      setError(c.message);
-    } finally {
-      setPaying(false);
+      setError(classifyPaymentError(e).message);
+      endProcessing();
     }
   }
 
   function handleRetry() {
-    setAttempt((a) => a + 1); // new reference + new polling loop
+    setAttemptId((a) => a + 1); // new attempt → new reference + new polling loop
   }
 
   const canRetry = state === "failed" || state === "timeout";
+  const buttonFx =
+    "transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <div className="max-w-lg mx-auto text-center py-10">
@@ -146,7 +205,7 @@ export default function CheckoutPage() {
           Total to pay
         </div>
         <div className="text-5xl font-bold" style={{ color: "var(--color-accent)" }}>
-          {totalSOL.toFixed(4)}
+          {(current?.amountSol ?? totalSOL).toFixed(4)}
         </div>
         <div
           className="text-sm tracking-widest uppercase mt-1"
@@ -200,22 +259,31 @@ export default function CheckoutPage() {
         {canRetry ? (
           <button
             onClick={handleRetry}
-            className="btn-primary flex-1 py-3 rounded-lg text-sm tracking-widest uppercase"
+            className={`btn-primary flex-1 py-3 rounded-lg text-sm tracking-widest uppercase ${buttonFx}`}
           >
             Try again 🔄
           </button>
         ) : (
           <button
             onClick={handlePayWithWallet}
-            disabled={!connected || !reference || paying}
+            disabled={!connected || !current || isProcessing}
+            aria-busy={isProcessing}
             title={connected ? undefined : "Connect a wallet (top right) to pay directly"}
-            className="btn-primary flex-1 py-3 rounded-lg text-sm tracking-widest uppercase"
+            className={`btn-primary flex-1 py-3 rounded-lg text-sm tracking-widest uppercase inline-flex items-center justify-center gap-2 ${buttonFx}`}
           >
-            {paying
-              ? "Check your wallet…"
-              : connected
-                ? "Pay with connected wallet"
-                : "Connect wallet to pay"}
+            {isProcessing ? (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="inline-block w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin"
+                />
+                Processing...
+              </>
+            ) : connected ? (
+              "Pay with connected wallet"
+            ) : (
+              "Connect wallet to pay"
+            )}
           </button>
         )}
       </div>

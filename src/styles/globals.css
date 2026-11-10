@@ -63,15 +63,15 @@ h1, h2, h3 {
   letter-spacing: 0.05em;
   border: none;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+  transition: background-color 0.2s, transform 0.1s, scale 0.1s;
 }
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background-color: var(--color-accent2);
   color: var(--color-text);
   transform: scale(1.02);
 }
 .btn-primary:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
 }
