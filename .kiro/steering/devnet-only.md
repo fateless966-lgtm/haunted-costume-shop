@@ -13,7 +13,7 @@ inclusion: always
 3. All Solana Explorer links use `?cluster=devnet`.
 4. Every page must display the **"DevNet only — no real money"** badge (the `DevNetBadge` component).
 5. Never add a network switcher or any code path that could reach Mainnet.
-6. The `MERCHANT_WALLET` constant (`ETg62c95bHoBY2ndXVQxLsTiggn5hLUHkKTLGWsbuKY6`) is a DevNet address — do not replace it with a Mainnet address.
+6. The `MERCHANT_WALLET` constant (`5hMaBEB2NdYLHJPLZU88JNAVuroZzJLDSF6QixoiQsBi`) is a DevNet address — do not replace it with a Mainnet address.
 
 ## Why
 This is a hackathon demo. Using real SOL on Mainnet would charge users real money.

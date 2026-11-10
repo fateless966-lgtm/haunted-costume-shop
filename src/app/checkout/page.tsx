@@ -8,6 +8,7 @@ import type { PublicKey } from "@solana/web3.js";
 import { useCart } from "@/lib/cartContext";
 import { getCostumeById } from "@/lib/costumes";
 import { saveReceipt } from "@/lib/receipt";
+import { MERCHANT_WALLET } from "@/lib/solana";
 import {
   buildPayUrl,
   classifyPaymentError,
@@ -101,6 +102,11 @@ export default function CheckoutPage() {
 
   async function handlePayWithWallet() {
     if (!publicKey || !reference) return;
+    if (publicKey.equals(MERCHANT_WALLET)) {
+      // Paying yourself nets zero balance change, so validateTransfer would fail.
+      setError("This wallet is the shop's merchant wallet. Switch to a different wallet to pay.");
+      return;
+    }
     setPaying(true);
     try {
       await sendWalletPayment(publicKey, reference, totalSOL, sendTransaction);

@@ -31,7 +31,7 @@ cart with a buy/rent toggle per item, and check out with Solana Pay on DevNet.
 - Generates a single Solana Pay URL (`encodeURL`) for the cart total on
   DevNet using a fresh reference (`new Keypair().publicKey`) per order.
 - Renders a QR code (`createQR`) and a "Pay with connected wallet" button.
-- Merchant wallet: `ETg62c95bHoBY2ndXVQxLsTiggn5hLUHkKTLGWsbuKY6` (DevNet).
+- Merchant wallet: `5hMaBEB2NdYLHJPLZU88JNAVuroZzJLDSF6QixoiQsBi` (DevNet).
 - DevNet RPC: `https://api.devnet.solana.com`.
 
 ### 4. On-Chain Verification

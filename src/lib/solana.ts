@@ -11,7 +11,7 @@ export const connection = new Connection(DEVNET_RPC, "confirmed");
 // Public merchant wallet address (DevNet). Safe to hardcode — public address only.
 // NEVER put a private key or seed phrase here. See .kiro/steering/no-secrets.md
 export const MERCHANT_WALLET = new PublicKey(
-  "ETg62c95bHoBY2ndXVQxLsTiggn5hLUHkKTLGWsbuKY6"
+  "5hMaBEB2NdYLHJPLZU88JNAVuroZzJLDSF6QixoiQsBi"
 );
 
 const BASE58_SIGNATURE = /^[1-9A-HJ-NP-Za-km-z]{64,90}$/;
