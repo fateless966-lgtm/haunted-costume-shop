@@ -31,3 +31,19 @@ export interface PaymentResult {
   amount: number;     // SOL
   items: CartItem[];
 }
+
+// ─── Receipt (snapshot saved to sessionStorage after confirmation) ───
+export interface ReceiptLine {
+  name: string;
+  emoji: string;
+  mode: PurchaseMode;
+  quantity: number;
+  unitPrice: number;  // SOL
+}
+
+export interface Receipt {
+  signature: string;
+  amountSol: number;
+  lines: ReceiptLine[];
+  paidAt: number;     // epoch ms
+}

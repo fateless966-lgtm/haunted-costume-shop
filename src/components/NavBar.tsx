@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useCart } from "@/lib/cartContext";
+
+// ssr:false avoids a known hydration mismatch in the wallet button
+const WalletMultiButton = dynamic(
+  async () =>
+    (await import("@solana/wallet-adapter-react-ui")).WalletMultiButton,
+  { ssr: false }
+);
 
 export default function NavBar() {
   const { totalItems } = useCart();
@@ -41,6 +49,8 @@ export default function NavBar() {
         >
           Shop
         </Link>
+
+        <WalletMultiButton />
 
         <Link href="/cart" className="relative flex items-center gap-1">
           <span className="text-xl">🛒</span>
